@@ -8,14 +8,14 @@ def test_student_creation():
     """Проверка инициализации атрибутов объекта Student."""
     student = Student(
         student_id=1,
-        name="Узунян Осип",
+        name="Узунян Овсеп Норайрович",
         course=3,
         gpa=4.75,
         is_budget=True,
         email="test@example.com",
     )
     assert student.id == 1
-    assert student.name == "Узунян Осип"
+    assert student.name == "Узунян Овсеп Норайрович"
     assert student.course == 3
     assert student.gpa == 4.75
     assert student.is_budget is True
