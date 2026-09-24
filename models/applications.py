@@ -157,7 +157,11 @@ def show_applications(applications: List[Application]) -> None:
         return
 
     print("\n" + "=" * 95)
-    print(f"{'№':<5} | {'Студент':<22} | {'Тема ID':<8} | {'GPA':<5} | {'Приоритет':<10} | {'Статус':<12} | {'Дата':<10}")
+    header = (
+        f"{'№':<5} | {'Студент':<22} | {'Тема ID':<8} | {'GPA':<5} | "
+        f"{'Приоритет':<10} | {'Статус':<12} | {'Дата':<10}"
+    )
+    print(header)
     print("-" * 95)
     for app in applications:
         print(

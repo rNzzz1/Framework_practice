@@ -9,7 +9,6 @@ from typing import List
 
 from models import Topic, Student, Application
 from models.topics import (
-    add_topic,
     find_topic_by_id,
     find_topics,
     filter_topics_by_discipline,
@@ -18,7 +17,6 @@ from models.topics import (
 from models.students import (
     add_student,
     find_student_by_id,
-    find_students,
     show_students,
 )
 from models.applications import (
@@ -39,7 +37,6 @@ from storage import (
 from utils import (
     input_int,
     input_float,
-    input_date,
     input_str,
 )
 
@@ -108,11 +105,11 @@ def run_demo_scenario(
     show_students(students)
 
     print("\n3. Взаимодействие объектов: создание новой заявки")
-    target_topic = find_topic_by_id(topics, 2)
+    target_topic = find_topic_by_id(topics, 3)
     target_student = find_student_by_id(students, 2)
 
     if target_topic and target_student:
-        print(f"Попытка подачи заявки студентом '{target_student.name}' на тему '{target_topic.title}'")
+        print(f"Подача заявки студентом '{target_student.name}' на тему [{target_topic.id}] '{target_topic.title}'")
         try:
             demo_app = create_application(
                 applications=applications,
@@ -128,6 +125,17 @@ def run_demo_scenario(
                 print(f"    - Метод __str__: {demo_app}")
         except ValueError as err:
             print(f"[!] {err}")
+
+    # Демонстрация валидации: студент с низким GPA
+    invalid_student = find_student_by_id(students, 5)
+    strict_topic = find_topic_by_id(topics, 4)
+    if invalid_student and strict_topic:
+        print(f"\nПопытка подачи соискателем '{invalid_student.name}' (GPA: {invalid_student.gpa}) "
+              f"на строгую тему [{strict_topic.id}] '{strict_topic.title}' (Мин. GPA: {strict_topic.min_gpa}):")
+        try:
+            create_application(applications, strict_topic, invalid_student)
+        except ValueError as err:
+            print(f"[!] Ожидаемый отказ: {err}")
 
     print("\n4. Сводная статистика по объектам заявок:")
     stats = get_applications_statistics(applications)

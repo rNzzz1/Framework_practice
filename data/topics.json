@@ -1,7 +1,7 @@
 [
   {
     "id": 1,
-    "title": "Разработка веб-сервиса распределения курсовых работ",
+    "title": "Разработка веб-сервиса распределения курсовых работ на Django",
     "discipline": "Технологии разработки приложений на базе фреймворков",
     "supervisor": "доц. Ящун Т. В.",
     "min_course": 3,
@@ -18,12 +18,12 @@
     "min_course": 3,
     "min_gpa": 4.0,
     "capacity": 1,
-    "current_students": 0,
-    "is_available": true
+    "current_students": 1,
+    "is_available": false
   },
   {
     "id": 3,
-    "title": "Разработка аналитической подсистемы учета успеваемости",
+    "title": "Разработка аналитической подсистемы учета успеваемости студентов",
     "discipline": "Базы данных и экспертные системы",
     "supervisor": "проф. Смирнов А. А.",
     "min_course": 2,
@@ -39,6 +39,28 @@
     "supervisor": "доц. Петров И. С.",
     "min_course": 3,
     "min_gpa": 4.2,
+    "capacity": 1,
+    "current_students": 0,
+    "is_available": true
+  },
+  {
+    "id": 5,
+    "title": "Система автоматизированного регрессионного тестирования веб-приложений",
+    "discipline": "Тестирование и верификация программного обеспечения",
+    "supervisor": "ст. преп. Кузнецова Е. В.",
+    "min_course": 3,
+    "min_gpa": 3.8,
+    "capacity": 2,
+    "current_students": 0,
+    "is_available": true
+  },
+  {
+    "id": 6,
+    "title": "Разработка распределенного кэширования для высоконагруженных сервисов",
+    "discipline": "Архитектура корпоративных информационных систем",
+    "supervisor": "проф. Смирнов А. А.",
+    "min_course": 4,
+    "min_gpa": 4.5,
     "capacity": 1,
     "current_students": 0,
     "is_available": true

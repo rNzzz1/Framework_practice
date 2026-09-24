@@ -9,18 +9,34 @@
   },
   {
     "id": 2,
-    "name": "Иванов Иван",
+    "name": "Иванов Иван Иванович",
     "course": 3,
     "gpa": 4.6,
     "is_budget": true,
-    "email": "ivanov@edu.mirea.ru"
+    "email": "ivanov.i@edu.mirea.ru"
   },
   {
     "id": 3,
-    "name": "Смирнова Анна",
+    "name": "Смирнова Анна Сергеевна",
     "course": 2,
     "gpa": 4.1,
     "is_budget": false,
-    "email": "smirnova@edu.mirea.ru"
+    "email": "smirnova.a@edu.mirea.ru"
+  },
+  {
+    "id": 4,
+    "name": "Петров Дмитрий Алексеевич",
+    "course": 4,
+    "gpa": 4.85,
+    "is_budget": true,
+    "email": "petrov.d@edu.mirea.ru"
+  },
+  {
+    "id": 5,
+    "name": "Ковалева Мария Павловна",
+    "course": 3,
+    "gpa": 3.4,
+    "is_budget": false,
+    "email": "kovaleva.m@edu.mirea.ru"
   }
 ]
