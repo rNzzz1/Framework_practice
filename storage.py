@@ -1,16 +1,16 @@
-"""Модуль загрузки и сохранения данных проекта в формате JSON."""
+"""Модуль загрузки и сохранения объектов предметной области в формате JSON."""
 
 import json
 import os
-from typing import Any, List, Dict
+from typing import Any, List, Optional
+
+from models import Topic, Student, Application
+from models.topics import find_topic_by_id
+from models.students import find_student_by_id
 
 
 def load_json_file(filename: str, default_data: Any) -> Any:
-    """Безопасно загружает данные из JSON-файла.
-
-    При отсутствии файла или некорректной структуре JSON возвращает
-    значение по умолчанию и перехватывает исключения.
-    """
+    """Безопасно загружает сырые данные из JSON-файла с обработкой исключений."""
     if not os.path.exists(filename):
         return default_data
 
@@ -23,10 +23,7 @@ def load_json_file(filename: str, default_data: Any) -> Any:
 
 
 def save_json_file(filename: str, data: Any) -> None:
-    """Сохраняет переданные данные в JSON-файл с форматированием.
-
-    Использует контекстный менеджер with и гарантирует закрытие файла.
-    """
+    """Сохраняет переданные данные в JSON-файл через контекстный менеджер with."""
     directory = os.path.dirname(filename)
     if directory and not os.path.exists(directory):
         os.makedirs(directory, exist_ok=True)
@@ -38,31 +35,66 @@ def save_json_file(filename: str, data: Any) -> None:
         print(f"[Ошибка] Не удалось записать данные в файл {filename}: {error}")
 
 
-def load_topics(filename: str) -> Dict[int, Dict[str, Any]]:
-    """Загружает темы курсовых работ из JSON-файла и возвращает словарь по id."""
+def load_topics(filename: str) -> List[Topic]:
+    """Загружает темы курсовых работ и преобразует их в список объектов Topic."""
     raw_list = load_json_file(filename, default_data=[])
-    topics: Dict[int, Dict[str, Any]] = {}
-    for item in raw_list:
-        topic_id = int(item["id"])
-        topics[topic_id] = item
-    return topics
+    return [Topic.from_dict(item) for item in raw_list]
 
 
-def save_topics(filename: str, topics: Dict[int, Dict[str, Any]]) -> None:
-    """Сохраняет словарь тем курсовых работ в JSON-файл как список."""
-    topic_list = list(topics.values())
-    save_json_file(filename, topic_list)
+def save_topics(filename: str, topics: List[Topic]) -> None:
+    """Сериализует список объектов Topic в JSON-файл."""
+    data = [topic.to_dict() for topic in topics]
+    save_json_file(filename, data)
 
 
-def load_applications(filename: str) -> List[Dict[str, Any]]:
-    """Загружает список заявок студентов из JSON-файла."""
+def load_students(filename: str) -> List[Student]:
+    """Загружает студентов и преобразует их в список объектов Student."""
     raw_list = load_json_file(filename, default_data=[])
-    return list(raw_list)
+    return [Student.from_dict(item) for item in raw_list]
 
 
-def save_applications(
+def save_students(filename: str, students: List[Student]) -> None:
+    """Сериализует список объектов Student в JSON-файл."""
+    data = [student.to_dict() for student in students]
+    save_json_file(filename, data)
+
+
+def load_applications(
     filename: str,
-    applications: List[Dict[str, Any]],
-) -> None:
-    """Сохраняет список заявок студентов в JSON-файл."""
-    save_json_file(filename, applications)
+    topics: List[Topic],
+    students: List[Student],
+) -> List[Application]:
+    """Загружает заявки из JSON и восстанавливает объектные связи с Topic и Student."""
+    raw_list = load_json_file(filename, default_data=[])
+    applications: List[Application] = []
+
+    for item in raw_list:
+        topic_id = int(item["topic_id"])
+        student_id = int(item["student_id"])
+
+        matched_topic = find_topic_by_id(topics, topic_id)
+        matched_student = find_student_by_id(students, student_id)
+
+        if matched_topic and matched_student:
+            app = Application(
+                app_id=int(item["id"]),
+                topic=matched_topic,
+                student=matched_student,
+                application_date=str(item.get("application_date", "")),
+                priority=int(item.get("priority", matched_student.calculate_priority())),
+                is_cancelled=bool(item.get("is_cancelled", False)),
+            )
+            applications.append(app)
+        else:
+            print(
+                f"[Предупреждение] Пропуск заявки №{item.get('id')}: "
+                f"не найден связанный объект Topic({topic_id}) или Student({student_id})."
+            )
+
+    return applications
+
+
+def save_applications(filename: str, applications: List[Application]) -> None:
+    """Сериализует список объектов Application в JSON-файл с сохранением ID связей."""
+    data = [app.to_dict() for app in applications]
+    save_json_file(filename, data)

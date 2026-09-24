@@ -2,12 +2,9 @@
   {
     "id": 101,
     "topic_id": 1,
-    "student_name": "Узунян Осип",
-    "student_course": 3,
-    "gpa": 4.75,
-    "is_budget": true,
+    "student_id": 1,
     "application_date": "2026-09-24",
     "priority": 105,
-    "status": "ОДОБРЕНА"
+    "is_cancelled": false
   }
 ]

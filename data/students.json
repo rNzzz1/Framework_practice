@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "Узунян Осип",
+    "course": 3,
+    "gpa": 4.75,
+    "is_budget": true,
+    "email": "uzunano85@gmail.com"
+  },
+  {
+    "id": 2,
+    "name": "Иванов Иван",
+    "course": 3,
+    "gpa": 4.6,
+    "is_budget": true,
+    "email": "ivanov@edu.mirea.ru"
+  },
+  {
+    "id": 3,
+    "name": "Смирнова Анна",
+    "course": 2,
+    "gpa": 4.1,
+    "is_budget": false,
+    "email": "smirnova@edu.mirea.ru"
+  }
+]
