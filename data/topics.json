@@ -1,0 +1,46 @@
+[
+  {
+    "id": 1,
+    "title": "Разработка веб-сервиса распределения курсовых работ",
+    "discipline": "Технологии разработки приложений на базе фреймворков",
+    "supervisor": "доц. Ящун Т. В.",
+    "min_course": 3,
+    "min_gpa": 3.5,
+    "capacity": 1,
+    "current_students": 1,
+    "is_available": false
+  },
+  {
+    "id": 2,
+    "title": "Проектирование микросервисной архитектуры корпоративного портала",
+    "discipline": "Технологии разработки приложений на базе фреймворков",
+    "supervisor": "доц. Ящун Т. В.",
+    "min_course": 3,
+    "min_gpa": 4.0,
+    "capacity": 1,
+    "current_students": 0,
+    "is_available": true
+  },
+  {
+    "id": 3,
+    "title": "Разработка аналитической подсистемы учета успеваемости",
+    "discipline": "Базы данных и экспертные системы",
+    "supervisor": "проф. Смирнов А. А.",
+    "min_course": 2,
+    "min_gpa": 3.2,
+    "capacity": 2,
+    "current_students": 0,
+    "is_available": true
+  },
+  {
+    "id": 4,
+    "title": "Интеллектуальный рекомендательный модуль выбора курсовых проектов",
+    "discipline": "Интеллектуальные информационные системы",
+    "supervisor": "доц. Петров И. С.",
+    "min_course": 3,
+    "min_gpa": 4.2,
+    "capacity": 1,
+    "current_students": 0,
+    "is_available": true
+  }
+]

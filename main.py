@@ -1,153 +1,245 @@
-"""
-Сервис выбора тем курсовых работ.
+"""Главный модуль запуска консольного приложения 'Сервис выбора тем курсовых работ'.
 
-Начальная реализация в рамках Практической работы № 1.
-Используются базовые конструкции Python: простые типы данных,
-операции, преобразование типов, условные конструкции if/elif/else,
-функции и импорт модулей из стандартной библиотеки.
+Реализует интерактивное меню пользователя, координацию работы модулей,
+загрузку и сохранение данных в формате JSON.
 """
 
+import sys
 from datetime import date
+from typing import Dict, Any, List
+
+from storage import (
+    load_topics,
+    save_topics,
+    load_applications,
+    save_applications,
+)
+from topics import (
+    find_topics,
+    is_topic_available,
+    filter_topics_by_discipline,
+    sort_topics_by_title,
+    get_topic_status,
+)
+from applications import (
+    create_application,
+    cancel_application,
+    get_applications_statistics,
+    format_application_summary,
+)
+from utils import (
+    input_int,
+    input_float,
+    input_date,
+    input_str,
+)
+
+TOPICS_FILE = "data/topics.json"
+APPLICATIONS_FILE = "data/applications.json"
 
 
-def check_topic_availability(is_available: bool) -> str:
-    """
-    Проверяет статус доступности темы курсовой работы для выбора.
-    """
-    if is_available:
-        return "Тема свободна для выбора"
-    else:
-        return "Тема уже закреплена за другим студентом"
+def show_topics(topics: Dict[int, Dict[str, Any]]) -> None:
+    """Выводит список тем курсовых работ в виде форматированной таблицы."""
+    if not topics:
+        print("\n[!] Список тем курсовых работ пуст.")
+        return
+
+    print("\n" + "=" * 90)
+    print(f"{'ID':<4} | {'Название темы':<35} | {'Дисциплина':<25} | {'Квота':<6} | {'Статус':<15}")
+    print("-" * 90)
+    for topic in sort_topics_by_title(topics):
+        quota_str = f"{topic['current_students']}/{topic['capacity']}"
+        status_str = "Доступна" if topic["is_available"] else "Занята"
+        title_truncated = (
+            topic['title'][:32] + "..." if len(topic['title']) > 35 else topic['title']
+        )
+        disc_truncated = (
+            topic['discipline'][:22] + "..." if len(topic['discipline']) > 25 else topic['discipline']
+        )
+        print(f"{topic['id']:<4} | {title_truncated:<35} | {disc_truncated:<25} | {quota_str:<6} | {status_str:<15}")
+    print("=" * 90)
 
 
-def validate_student_eligibility(
-    student_course: int,
-    required_course: int,
-    gpa: float,
-    min_gpa: float,
-) -> bool:
-    """
-    Проверяет допуск студента к выбору темы по курсу обучения и среднему баллу.
-    """
-    is_course_valid = student_course >= required_course
-    is_gpa_valid = gpa >= min_gpa
+def show_applications(
+    applications: List[Dict[str, Any]],
+    topics: Dict[int, Dict[str, Any]],
+) -> None:
+    """Выводит список поданных заявок с детализацией."""
+    if not applications:
+        print("\n[!] Список поданных заявок пуст.")
+        return
 
-    if is_course_valid and is_gpa_valid:
-        return True
-    return False
-
-
-def calculate_application_priority(gpa: float, is_budget: bool) -> int:
-    """
-    Рассчитывает числовой приоритет заявки.
-
-    Формула: базовый балл рассчитывается на основе среднего балла (GPA * 20),
-    плюс надбавка 10 баллов для студентов бюджетной формы обучения.
-    """
-    base_priority = int(gpa * 20)
-    bonus = 10 if is_budget else 0
-    total_priority = base_priority + bonus
-    return total_priority
+    print("\n" + "=" * 90)
+    print(f"{'№':<5} | {'Студент':<20} | {'Тема ID':<8} | {'GPA':<5} | {'Приоритет':<10} | {'Статус':<12}")
+    print("-" * 90)
+    for app in applications:
+        print(
+            f"{app['id']:<5} | {app['student_name']:<20} | {app['topic_id']:<8} | "
+            f"{app['gpa']:<5.2f} | {app['priority']:<10} | {app['status']:<12}"
+        )
+    print("=" * 90)
 
 
-def format_application_summary(
-    app_id: int,
-    student_name: str,
-    topic_title: str,
-    discipline_name: str,
-    app_date: date,
-    is_approved: bool,
-) -> str:
-    """
-    Формирует итоговую текстовую сводку по заявке на тему курсовой работы.
-    """
-    status_text = "ОДОБРЕНА" if is_approved else "ОТКЛОНЕНА"
+def run_demo_scenario(topics: Dict[int, Dict[str, Any]], applications: List[Dict[str, Any]]) -> None:
+    """Демонстрационный запуск без блокировки консоли (для тестов и отладки)."""
+    print("\n--- ДЕМОНСТРАЦИОННЫЙ ЗАПУСК СЕРВИСА ---")
+    show_topics(topics)
 
-    summary = (
-        "==================================================\n"
-        f"КАРТОЧКА ЗАЯВКИ № {app_id}\n"
-        "==================================================\n"
-        f"Дата подачи:     {app_date.strftime('%d.%m.%Y')}\n"
-        f"Студент:         {student_name}\n"
-        f"Дисциплина:      {discipline_name}\n"
-        f"Тема работы:     {topic_title}\n"
-        f"Статус заявки:   {status_text}\n"
-        "=================================================="
-    )
-    return summary
+    print("\n[Демо] Поиск темы по ключевому слову 'микросервис':")
+    found = find_topics(topics, "микросервис")
+    for t in found:
+        print(f"-> Найдено: [{t['id']}] {t['title']} (Рук.: {t['supervisor']})")
+
+    print("\n[Демо] Проверка доступности темы №2:")
+    avail = is_topic_available(topics, 2)
+    print(f"Статус темы №2: {get_topic_status(avail)}")
+
+    print("\n[Демо] Подача заявки на тему №2:")
+    try:
+        new_app = create_application(
+            applications=applications,
+            topics=topics,
+            topic_id=2,
+            student_name="Иванов Иван",
+            student_course=3,
+            gpa=4.6,
+            is_budget=True,
+            app_date=date(2026, 9, 24),
+        )
+        print(format_application_summary(
+            app_id=new_app["id"],
+            student_name=new_app["student_name"],
+            topic_title=topics[2]["title"],
+            discipline_name=topics[2]["discipline"],
+            app_date_str=new_app["application_date"],
+            status_text=new_app["status"],
+        ))
+    except ValueError as err:
+        print(f"[!] Ошибка при подаче заявки: {err}")
+
+    stats = get_applications_statistics(applications)
+    print(f"\n[Демо] Статистика: Всего заявок: {stats['total']}, Одобрено: {stats['approved']}, Средний GPA: {stats['avg_gpa']}")
 
 
-def main():
-    print("--- СЕРВИС ВЫБОРА ТЕМ КУРСОВЫХ РАБОТ ---\n")
+def main() -> None:
+    """Точка запуска приложения и обработка главного цикла меню."""
+    topics = load_topics(TOPICS_FILE)
+    applications = load_applications(APPLICATIONS_FILE)
 
-    # Входные данные: Сущность Студент
-    student_name = "Узунян Осип"
-    student_course_str = "3"
-    student_gpa_str = "4.75"
-    is_budget = True
+    if "--demo" in sys.argv:
+        run_demo_scenario(topics, applications)
+        return
 
-    # Преобразование типов данных
-    student_course = int(student_course_str)
-    student_gpa = float(student_gpa_str)
+    while True:
+        print("\n=== Сервис выбора тем курсовых работ ===")
+        print("1. Показать все темы курсовых работ")
+        print("2. Найти тему по названию или руководителю")
+        print("3. Отфильтровать темы по дисциплине")
+        print("4. Проверить доступность темы")
+        print("5. Подать заявку на тему курсовой работы")
+        print("6. Отменить заявку")
+        print("7. Показать все заявки")
+        print("8. Статистика по заявкам")
+        print("9. Запустить демонстрационный сценарий")
+        print("0. Выход")
 
-    # Входные данные: Сущность Дисциплина
-    discipline_name = "Технологии разработки приложений на базе фреймворков"
-    required_course = 3
-    min_required_gpa = 3.5
+        choice = input_int("Выберите действие (0-9): ", min_val=0, max_val=9)
 
-    # Входные данные: Сущность Тема курсовой работы
-    topic_title = "Разработка веб-сервиса распределения курсовых работ"
-    is_topic_available = True
-    topic_supervisor = "доц. Ящун Т. В."
+        if choice == 1:
+            show_topics(topics)
 
-    # Входные данные: Сущность Заявка
-    application_id = 101
-    submission_date = date(2026, 9, 24)
+        elif choice == 2:
+            query = input_str("Введите строку для поиска: ")
+            found = find_topics(topics, query)
+            if found:
+                print(f"\nНайдено тем: {len(found)}")
+                for t in found:
+                    print(f"[{t['id']}] {t['title']} | Рук.: {t['supervisor']} | Дисциплина: {t['discipline']}")
+            else:
+                print("[-] По данному запросу ничего не найдено.")
 
-    # Вывод информации о запросе
-    print(f"Подача заявки студентом: {student_name} ({student_course} курс)")
-    print(f"Средний балл успеваемости (GPA): {student_gpa}")
-    print(f"Форма обучения: {'Бюджет' if is_budget else 'Договор'}")
-    print(f"Выбранная дисциплина: {discipline_name}")
-    print(f"Выбранная тема: {topic_title}")
-    print(f"Научный руководитель: {topic_supervisor}")
-    print(f"Статус темы: {check_topic_availability(is_topic_available)}\n")
+        elif choice == 3:
+            discipline = input_str("Введите название дисциплины: ")
+            filtered = filter_topics_by_discipline(topics, discipline)
+            if filtered:
+                print(f"\nТемы по дисциплине '{discipline}':")
+                for t in filtered:
+                    print(f"[{t['id']}] {t['title']} (Курс >= {t['min_course']}, GPA >= {t['min_gpa']})")
+            else:
+                print("[-] Тем по данной дисциплине не найдено.")
 
-    # Проверка условий допуска студента
-    is_eligible = validate_student_eligibility(
-        student_course=student_course,
-        required_course=required_course,
-        gpa=student_gpa,
-        min_gpa=min_required_gpa,
-    )
+        elif choice == 4:
+            topic_id = input_int("Введите ID темы: ")
+            if topic_id not in topics:
+                print("[-] Тема с таким ID не существует.")
+            else:
+                avail = is_topic_available(topics, topic_id)
+                print(f"[i] {get_topic_status(avail)}")
 
-    if is_eligible:
-        print("[+] Студент соответствует академическим требованиям.")
-    else:
-        print("[-] Студент НЕ соответствует требованиям для выбора данной темы.")
+        elif choice == 5:
+            topic_id = input_int("Введите ID темы: ")
+            student_name = input_str("ФИО студента: ")
+            student_course = input_int("Курс обучения: ", min_val=1, max_val=6)
+            gpa = input_float("Средний балл (GPA, от 2.0 до 5.0): ", min_val=2.0, max_val=5.0)
+            budget_choice = input_str("Форма обучения (б - бюджет / д - договор): ").lower()
+            is_budget = budget_choice.startswith("б")
 
-    # Вычисление приоритета заявки
-    priority = calculate_application_priority(student_gpa, is_budget)
-    print(f"[i] Рассчитанный приоритет заявки: {priority} баллов")
+            try:
+                app = create_application(
+                    applications=applications,
+                    topics=topics,
+                    topic_id=topic_id,
+                    student_name=student_name,
+                    student_course=student_course,
+                    gpa=gpa,
+                    is_budget=is_budget,
+                    app_date=date.today(),
+                )
+                save_topics(TOPICS_FILE, topics)
+                save_applications(APPLICATIONS_FILE, applications)
 
-    # Принятие решения по заявке
-    if is_eligible and is_topic_available:
-        is_approved = True
-        print("[+] Решение: Заявка успешно утверждена!\n")
-    else:
-        is_approved = False
-        print("[-] Решение: Заявка отклонена.\n")
+                topic_info = topics[topic_id]
+                print("\n[+] Заявка успешно создана и сохранена!")
+                print(format_application_summary(
+                    app_id=app["id"],
+                    student_name=app["student_name"],
+                    topic_title=topic_info["title"],
+                    discipline_name=topic_info["discipline"],
+                    app_date_str=app["application_date"],
+                    status_text=app["status"],
+                ))
+            except ValueError as error:
+                print(f"\n[-] Ошибка: {error}")
 
-    # Формирование и вывод итоговой карточки заявки
-    summary = format_application_summary(
-        app_id=application_id,
-        student_name=student_name,
-        topic_title=topic_title,
-        discipline_name=discipline_name,
-        app_date=submission_date,
-        is_approved=is_approved,
-    )
-    print(summary)
+        elif choice == 6:
+            app_id = input_int("Введите номер заявки для отмены: ")
+            if cancel_application(applications, topics, app_id):
+                save_topics(TOPICS_FILE, topics)
+                save_applications(APPLICATIONS_FILE, applications)
+                print(f"[+] Заявка №{app_id} успешно отменена, место на тему освобождено.")
+            else:
+                print(f"[-] Заявка №{app_id} не найдена или уже была отменена.")
+
+        elif choice == 7:
+            show_applications(applications, topics)
+
+        elif choice == 8:
+            stats = get_applications_statistics(applications)
+            print("\n" + "=" * 40)
+            print("СТАТИСТИКА ПО ЗАЯВКАМ")
+            print("=" * 40)
+            print(f"Всего заявок в системе: {stats['total']}")
+            print(f"Одобренных заявок:      {stats['approved']}")
+            print(f"Отмененных заявок:      {stats['cancelled']}")
+            print(f"Средний балл студентов: {stats['avg_gpa']}")
+            print("=" * 40)
+
+        elif choice == 9:
+            run_demo_scenario(topics, applications)
+
+        elif choice == 0:
+            print("\nЗавершение работы программы. До свидания!")
+            break
 
 
 if __name__ == "__main__":
