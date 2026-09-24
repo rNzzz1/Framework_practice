@@ -1,8 +1,4 @@
-"""Главный модуль запуска объектно-ориентированного приложения.
-
-Сервис выбора тем курсовых работ (Практическая работа № 3).
-"""
-
+import os
 import sys
 from datetime import date
 from typing import List
@@ -40,9 +36,10 @@ from utils import (
     input_str,
 )
 
-TOPICS_FILE = "data/topics.json"
-STUDENTS_FILE = "data/students.json"
-APPLICATIONS_FILE = "data/applications.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+TOPICS_FILE = os.path.join(BASE_DIR, "data", "topics.json")
+STUDENTS_FILE = os.path.join(BASE_DIR, "data", "students.json")
+APPLICATIONS_FILE = os.path.join(BASE_DIR, "data", "applications.json")
 
 
 def create_new_application(
@@ -172,6 +169,7 @@ def main() -> None:
 
         if choice == 1:
             show_topics(topics)
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 2:
             query = input_str("Введите поисковый запрос: ")
@@ -182,6 +180,7 @@ def main() -> None:
                     print(t)
             else:
                 print("[-] По запросу ничего не найдено.")
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 3:
             disc = input_str("Введите название дисциплины: ")
@@ -192,9 +191,11 @@ def main() -> None:
                     print(t)
             else:
                 print("[-] Тем по заданной дисциплине не найдено.")
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 4:
             show_students(students)
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 5:
             name = input_str("ФИО студента: ")
@@ -207,6 +208,7 @@ def main() -> None:
             new_student = add_student(students, name, course, gpa, is_budget, email)
             save_students(STUDENTS_FILE, students)
             print(f"[+] Студент успешно зарегистрирован: {new_student}")
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 6:
             topic_id = input_int("Введите ID темы: ")
@@ -216,9 +218,11 @@ def main() -> None:
                 print(f"[i] Тема '{topic.title}' {status_text} (Квота: {topic.current_students}/{topic.capacity}).")
             else:
                 print("[-] Тема с таким ID не найдена.")
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 7:
             create_new_application(applications, topics, students)
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 8:
             app_id = input_int("Введите номер заявки для отмены: ")
@@ -228,9 +232,11 @@ def main() -> None:
                 print(f"[+] Заявка №{app_id} успешно отменена, место на тему освобождено.")
             else:
                 print(f"[-] Заявка №{app_id} не найдена или уже была отменена.")
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 9:
             show_applications(applications)
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 10:
             stats = get_applications_statistics(applications)
@@ -242,9 +248,11 @@ def main() -> None:
             print(f"Отмененных заявок:      {stats['cancelled']}")
             print(f"Средний балл студентов: {stats['avg_gpa']}")
             print("=" * 45)
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 11:
             run_demo_scenario(topics, students, applications)
+            input("\n[Нажмите Enter для возврата в меню] ")
 
         elif choice == 0:
             save_topics(TOPICS_FILE, topics)
