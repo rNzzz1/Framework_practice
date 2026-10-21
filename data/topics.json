@@ -29,7 +29,7 @@
     "min_course": 2,
     "min_gpa": 3.2,
     "capacity": 2,
-    "current_students": 0,
+    "current_students": 1,
     "is_available": true
   },
   {

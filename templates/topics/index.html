@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Каталог тем курсовых работ | Сервис распределения{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-7">
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-mortarboard text-primary me-2"></i>Каталог тем курсовых работ
+        </h2>
+        <p class="text-muted mb-0">Выберите подходящую тему курсового проекта и подайте заявку на закрепление.</p>
+    </div>
+    <div class="col-md-5 text-md-end mt-3 mt-md-0">
+        <a href="{% url 'apply' %}" class="btn btn-primary px-3 shadow-sm">
+            <i class="bi bi-send-fill me-1"></i>Подать заявку
+        </a>
+    </div>
+</div>
+
+<!-- Фильтрация и поиск -->
+<div class="card p-3 mb-4 shadow-sm bg-white">
+    <form method="get" class="row g-2 align-items-center">
+        <div class="col-md-6">
+            <div class="input-group">
+                <span class="input-group-text bg-light"><i class="bi bi-search"></i></span>
+                <input type="text" name="q" class="form-control" placeholder="Поиск по названию, дисциплине или руководителю..." value="{{ query }}">
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select name="discipline" class="form-select">
+                <option value="">Все дисциплины</option>
+                {% for d in disciplines %}
+                    <option value="{{ d.id }}" {% if selected_discipline == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button type="submit" class="btn btn-dark">Фильтровать</button>
+        </div>
+    </form>
+</div>
+
+<!-- Список тем -->
+<div class="row g-3">
+    {% for topic in topics %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 shadow-sm border-0 d-flex flex-column">
+            <div class="card-body d-flex flex-column">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <span class="badge bg-light text-secondary border">ID: {{ topic.id }}</span>
+                    {% if topic.is_available and topic.has_free_capacity %}
+                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Свободна</span>
+                    {% else %}
+                        <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Занята</span>
+                    {% endif %}
+                </div>
+                <h5 class="card-title fw-semibold text-primary mb-2">
+                    <a href="{% url 'topic_detail' topic.id %}" class="text-decoration-none text-primary">{{ topic.title }}</a>
+                </h5>
+                <p class="card-text small text-muted mb-2">
+                    <i class="bi bi-book me-1"></i>{{ topic.discipline.name }}
+                </p>
+                <div class="mt-auto pt-2 border-top">
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Руководитель:</span>
+                        <strong class="text-dark">{{ topic.supervisor }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mb-1">
+                        <span>Требования:</span>
+                        <span>Курс &ge; {{ topic.min_course }}, GPA &ge; {{ topic.min_gpa|floatformat:1 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mb-3">
+                        <span>Квота мест:</span>
+                        <span class="fw-bold {% if topic.has_free_capacity %}text-success{% else %}text-danger{% endif %}">{{ topic.current_students }} / {{ topic.capacity }}</span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'topic_detail' topic.id %}" class="btn btn-outline-primary btn-sm">Подробнее</a>
+                        {% if topic.is_available and topic.has_free_capacity %}
+                            <a href="{% url 'apply' %}?topic_id={{ topic.id }}" class="btn btn-primary btn-sm">Выбрать эту тему</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12">
+        <div class="alert alert-info text-center py-4">
+            <i class="bi bi-info-circle fs-3 d-block mb-2"></i>
+            По заданным критериям фильтрации тем курсовых работ не найдено.
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

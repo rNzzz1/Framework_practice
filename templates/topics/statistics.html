@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block title %}Аналитика и статистика распределения | Сервис курсовых работ{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-graph-up-arrow text-primary me-2"></i>Аналитическая панель сервиса
+        </h2>
+        <p class="text-muted mb-0">Сводные показатели кампании распределения тем курсовых работ кафедры.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{% url 'api_statistics' %}" target="_blank" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-code-slash me-1"></i>Открыть JSON API статистики
+        </a>
+    </div>
+</div>
+
+<!-- Верхние карточки с ключевыми метриками (KPI) -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm bg-white p-3">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 bg-primary-subtle text-primary p-3 rounded-3">
+                    <i class="bi bi-journal-text fs-3"></i>
+                </div>
+                <div class="ms-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Всего тем</span>
+                    <h3 class="fw-bold mb-0 text-dark">{{ total_topics }}</h3>
+                    <span class="text-success small fw-medium">{{ free_topics }} доступно к выбору</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm bg-white p-3">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 bg-success-subtle text-success p-3 rounded-3">
+                    <i class="bi bi-people-fill fs-3"></i>
+                </div>
+                <div class="ms-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Соискателей</span>
+                    <h3 class="fw-bold mb-0 text-dark">{{ total_students }}</h3>
+                    <span class="text-muted small">студентов в базе</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm bg-white p-3">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 bg-info-subtle text-info p-3 rounded-3">
+                    <i class="bi bi-send-check-fill fs-3"></i>
+                </div>
+                <div class="ms-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Подано заявок</span>
+                    <h3 class="fw-bold mb-0 text-dark">{{ total_applications }}</h3>
+                    <span class="text-success small fw-medium">{{ approved_applications }} активных</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card border-0 shadow-sm bg-white p-3">
+            <div class="d-flex align-items-center">
+                <div class="flex-shrink-0 bg-warning-subtle text-warning-emphasis p-3 rounded-3">
+                    <i class="bi bi-mortarboard-fill fs-3"></i>
+                </div>
+                <div class="ms-3">
+                    <span class="text-muted small text-uppercase fw-semibold">Средний GPA</span>
+                    <h3 class="fw-bold mb-0 text-dark">{{ avg_gpa }}</h3>
+                    <span class="text-muted small">по соискателям</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Детализация заявок и дисциплин -->
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart-fill text-primary me-2"></i>Структура поданных заявок</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Активные (утвержденные)</span>
+                    <span class="fw-bold text-success">{{ approved_applications }}</span>
+                </div>
+                <div class="progress mb-4" style="height: 12px;">
+                    <div class="progress-bar bg-success" role="progressbar" style="width: {% if total_applications > 0 %}{% widthratio approved_applications total_applications 100 %}{% else %}0{% endif %}%;"></div>
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-muted">Отозванные (аннулированные)</span>
+                    <span class="fw-bold text-danger">{{ cancelled_applications }}</span>
+                </div>
+                <div class="progress mb-4" style="height: 12px;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: {% if total_applications > 0 %}{% widthratio cancelled_applications total_applications 100 %}{% else %}0{% endif %}%;"></div>
+                </div>
+
+                <div class="p-3 bg-light rounded-3 mt-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-info-circle-fill text-primary fs-4 me-3"></i>
+                        <p class="small mb-0 text-muted">
+                            При аннулировании заявки сервис возвращает зарезервированное место в пул доступных тем автоматически через транзакционный метод модели <code>Topic.release_slot()</code>.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="fw-bold mb-0"><i class="bi bi-collection-fill text-primary me-2"></i>Распределение по дисциплинам</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-3">Дисциплина</th>
+                                <th class="text-center">Всего тем</th>
+                                <th class="text-center">Доступно</th>
+                                <th class="text-end pe-3">Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for disc in discipline_stats %}
+                            <tr>
+                                <td class="ps-3 fw-medium text-dark">{{ disc.name }}</td>
+                                <td class="text-center fw-bold">{{ disc.topics_count }}</td>
+                                <td class="text-center text-success fw-bold">{{ disc.active_topics }}</td>
+                                <td class="text-end pe-3">
+                                    {% if disc.active_topics > 0 %}
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle">Набор открыт</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Все заняты</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="text-center py-3 text-muted">Данные отсутствуют</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

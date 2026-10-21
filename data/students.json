@@ -38,5 +38,13 @@
     "gpa": 3.4,
     "is_budget": false,
     "email": "kovaleva.m@edu.mirea.ru"
+  },
+  {
+    "id": 6,
+    "name": "QWRTY",
+    "course": 3,
+    "gpa": 4.0,
+    "is_budget": false,
+    "email": "fdsfsd@gmail.com"
   }
 ]

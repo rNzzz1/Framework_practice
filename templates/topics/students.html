@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Список студентов-соискателей | Сервис курсовых работ{% endblock %}
+
+{% block content %}
+<div class="row align-items-center mb-4">
+    <div class="col-md-8">
+        <h2 class="fw-bold text-dark mb-1">
+            <i class="bi bi-people-fill text-primary me-2"></i>Реестр студентов-соискателей
+        </h2>
+        <p class="text-muted mb-0">Список обучающихся с академическими показателями и рейтинговыми баллами приоритета.</p>
+    </div>
+    <div class="col-md-4 text-md-end mt-3 mt-md-0">
+        <a href="{% url 'apply' %}" class="btn btn-primary px-3 shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i>Оформить заявку
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3" style="width: 70px;">ID</th>
+                        <th>ФИО студента</th>
+                        <th>Курс</th>
+                        <th>Средний балл (GPA)</th>
+                        <th>Форма обучения</th>
+                        <th>Email</th>
+                        <th>Рейтинговый балл</th>
+                        <th class="text-end pe-3">Заявок</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td class="ps-3 text-muted fw-bold">#{{ student.id }}</td>
+                        <td>
+                            <div class="fw-semibold text-dark">{{ student.name }}</div>
+                            {% if student.name == "Узунян Овсеп Норайрович" %}
+                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Автор проекта (ЭФБО-12-24)</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ student.course }} курс</span>
+                        </td>
+                        <td>
+                            <span class="fw-bold {% if student.gpa >= 4.5 %}text-success{% elif student.gpa >= 3.5 %}text-primary{% else %}text-warning{% endif %}">
+                                {{ student.gpa|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if student.is_budget %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">Бюджет (+10)</span>
+                            {% else %}
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Договор</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="mailto:{{ student.email }}" class="text-decoration-none text-muted small">
+                                <i class="bi bi-envelope me-1"></i>{{ student.email }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="badge bg-info-subtle text-info-emphasis border border-info-subtle px-2 py-1">
+                                <i class="bi bi-star-fill text-warning me-1"></i>{{ student.calculate_priority }} баллов
+                            </span>
+                        </td>
+                        <td class="text-end pe-3">
+                            <span class="badge bg-dark rounded-pill">{{ student.applications.count }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Студенты не найдены. Выполните загрузку начальных данных командой <code>python manage.py seed_data</code>.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

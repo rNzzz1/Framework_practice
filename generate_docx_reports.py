@@ -765,7 +765,14 @@ PASSED: tests.test_applications.test_application_statistics
     print(f"[+] Успешно создан: {out_path}")
 
 
+from generate_docx_reports_5_6_7 import create_report_pr5, create_report_pr6, create_report_pr7
+
+
 if __name__ == "__main__":
     create_report_pr1()
     create_report_pr2()
     create_report_pr3()
+    create_report_pr5()
+    create_report_pr6()
+    create_report_pr7()
+
