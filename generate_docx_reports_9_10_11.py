@@ -125,26 +125,48 @@ def add_code_block(doc, code_text):
     p_after.paragraph_format.space_after = Pt(4)
 
 
+REPO_URL = "https://github.com/rNzzz1/Framework_practice"
+GERB_PATH = REPORTS_DIR / "gerb_mirea.jpg"
+
+
 def add_title_page(doc, pr_num, pr_theme):
-    """Генерирует официальный титульный лист РТУ МИРЭА."""
+    """Генерирует официальный титульный лист РТУ МИРЭА с гербом и ссылкой на репозиторий."""
+    if GERB_PATH.exists():
+        p_img = doc.add_paragraph()
+        p_img.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p_img.paragraph_format.space_before = Pt(0)
+        p_img.paragraph_format.space_after = Pt(4)
+        p_img.add_run().add_picture(str(GERB_PATH), width=Inches(1.4))
+
     add_paragraph(doc, "МИНОБРНАУКИ РОССИИ", size_pt=12, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
     add_paragraph(doc, "Федеральное государственное бюджетное образовательное учреждение высшего образования",
                   size_pt=10.5, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
-    add_paragraph(doc, "«МИРЭА — Российский технологический университет»", size_pt=12, bold=True,
+    add_paragraph(doc, "«МИРЭА – Российский технологический университет»", size_pt=12, bold=True,
                   align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
-    add_paragraph(doc, "(РТУ МИРЭА)", size_pt=11, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=14)
+    add_paragraph(doc, "РТУ МИРЭА", size_pt=11.5, bold=True, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=8)
 
-    add_paragraph(doc, "Институт перспективных технологий и индустриального программирования", size_pt=12,
+    add_paragraph(doc, "Институт перспективных технологий и индустриального программирования", size_pt=11.5,
                   align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
     add_paragraph(doc, "Кафедра индустриального программирования", size_pt=12, bold=True,
-                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=50)
+                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=20)
 
-    add_paragraph(doc, f"ОТЧЕТ ПО ПРАКТИЧЕСКОЙ РАБОТЕ № {pr_num}", size_pt=16, bold=True,
+    add_paragraph(doc, f"ОТЧЕТ ПО ПРАКТИЧЕСКОЙ РАБОТЕ № {pr_num}", size_pt=15.5, bold=True,
                   align=WD_ALIGN_PARAGRAPH.CENTER, space_after=6)
-    add_paragraph(doc, "по дисциплине «Технологии разработки приложений на базе фреймворков»", size_pt=13,
+    add_paragraph(doc, "по дисциплине «Технологии разработки приложений на базе фреймворков»", size_pt=12.5,
                   align=WD_ALIGN_PARAGRAPH.CENTER, space_after=6)
-    add_paragraph(doc, f"Тема: «{pr_theme}»", size_pt=12.5, italic=True,
-                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=60)
+    add_paragraph(doc, f"Тема: «{pr_theme}»", size_pt=12, bold=True,
+                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=14)
+
+    add_paragraph(doc, "НАПРАВЛЕНИЕ ПОДГОТОВКИ", size_pt=11.5, bold=True,
+                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=2)
+    add_paragraph(doc, "09.03.02 «Информационные системы и технологии»", size_pt=11.5,
+                  align=WD_ALIGN_PARAGRAPH.CENTER, space_after=10)
+
+    p_repo = add_paragraph(doc, "", size_pt=11, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=22)
+    r_lbl = p_repo.add_run("Репозиторий проекта: ")
+    format_run(r_lbl, size_pt=11, bold=True)
+    r_url = p_repo.add_run(REPO_URL)
+    format_run(r_url, size_pt=11, color_rgb=(9, 105, 218))
 
     # Блок исполнителя и преподавателя
     table = doc.add_table(rows=1, cols=2)
@@ -174,7 +196,7 @@ def add_title_page(doc, pr_num, pr_theme):
     r = p_right.add_run("Ящун Татьяна Викторовна")
     format_run(r, size_pt=11.5, bold=True)
 
-    add_paragraph(doc, "", space_after=80)
+    add_paragraph(doc, "", space_after=28)
     add_paragraph(doc, "Москва 2026", size_pt=12, align=WD_ALIGN_PARAGRAPH.CENTER, space_after=0)
     doc.add_page_break()
 
