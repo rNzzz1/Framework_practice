@@ -52,7 +52,7 @@ class Command(BaseCommand):
             is_budget=True,
             email="uzunano85@gmail.com",
         )
-        s2 = Student.objects.create(
+        Student.objects.create(
             name="Иванов Иван Иванович",
             course=3,
             gpa=4.60,
@@ -73,7 +73,7 @@ class Command(BaseCommand):
             is_budget=True,
             email="petrov.d@edu.mirea.ru",
         )
-        s5 = Student.objects.create(
+        Student.objects.create(
             name="Ковалева Мария Павловна",
             course=3,
             gpa=3.40,
@@ -112,7 +112,7 @@ class Command(BaseCommand):
             current_students=0,
             is_available=True,
         )
-        t4 = Topic.objects.create(
+        Topic.objects.create(
             title="Интеллектуальный рекомендательный модуль выбора курсовых проектов",
             discipline=d3,
             supervisor="доц. Петров И. С.",
@@ -122,7 +122,7 @@ class Command(BaseCommand):
             current_students=0,
             is_available=True,
         )
-        t5 = Topic.objects.create(
+        Topic.objects.create(
             title="Система автоматизированного регрессионного тестирования веб-приложений",
             discipline=d4,
             supervisor="ст. преп. Кузнецова Е. В.",
@@ -132,7 +132,7 @@ class Command(BaseCommand):
             current_students=0,
             is_available=True,
         )
-        t6 = Topic.objects.create(
+        Topic.objects.create(
             title="Разработка распределенного кэширования для высоконагруженных сервисов",
             discipline=d5,
             supervisor="проф. Смирнов А. А.",

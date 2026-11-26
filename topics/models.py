@@ -7,8 +7,12 @@
 - Application (Заявка на тему)
 """
 
+from datetime import date
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.urls import reverse
+from django.utils.text import slugify
+from unidecode import unidecode
 
 
 class Discipline(models.Model):
@@ -62,6 +66,15 @@ class Student(models.Model):
         verbose_name="Электронная почта",
         unique=True,
     )
+    is_honor_student = models.GeneratedField(
+        expression=models.Case(
+            models.When(gpa__gte=4.5, then=models.Value(True)),
+            default=models.Value(False),
+        ),
+        output_field=models.BooleanField(),
+        db_persist=True,
+        verbose_name="Студент-отличник",
+    )
 
     class Meta:
         verbose_name = "Студент"
@@ -86,9 +99,15 @@ class Topic(models.Model):
         max_length=255,
         verbose_name="Название темы",
     )
+    slug = models.SlugField(
+        max_length=255,
+        unique=True,
+        blank=True,
+        verbose_name="URL-слаг темы",
+    )
     discipline = models.ForeignKey(
         Discipline,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="topics",
         verbose_name="Дисциплина",
     )
@@ -116,6 +135,21 @@ class Topic(models.Model):
         verbose_name="Доступна для выбора",
         default=True,
     )
+    image = models.ImageField(
+        upload_to="topics/",
+        blank=True,
+        null=True,
+        verbose_name="Иллюстрация темы",
+    )
+    is_competitive = models.GeneratedField(
+        expression=models.Case(
+            models.When(capacity__gt=1, then=models.Value(True)),
+            default=models.Value(False),
+        ),
+        output_field=models.BooleanField(),
+        db_persist=True,
+        verbose_name="Командная/Конкурсная тема",
+    )
 
     class Meta:
         verbose_name = "Тема курсовой работы"
@@ -123,12 +157,13 @@ class Topic(models.Model):
         ordering = ["title"]
 
     def is_suitable_for(self, student_course: int, gpa: float) -> bool:
-        """Проверяет соответствие студента требованиям темы."""
+        """Проверяет соответствие студента академическим требованиям темы."""
         return (student_course >= self.min_course) and (gpa >= self.min_gpa)
 
     def has_free_capacity(self) -> bool:
-        """Проверяет наличие свободных мест по квоте."""
-        return self.current_students < self.capacity
+        """Проверяет наличие свободных мест по квоте с учетом активных заявок."""
+        active_apps_count = self.applications.filter(status=Application.Status.ACTIVE).count()
+        return active_apps_count < self.capacity
 
     def reserve_slot(self) -> bool:
         """Резервирует место на тему при подаче заявки."""
@@ -150,38 +185,93 @@ class Topic(models.Model):
         if self.current_students > self.capacity:
             raise ValidationError("Число записанных студентов не может превышать квоту темы.")
 
+    def get_absolute_url(self) -> str:
+        """Возвращает канонический URL темы по слагу."""
+        if self.slug:
+            return reverse("topic_detail_slug", kwargs={"slug": self.slug})
+        return reverse("topic_detail", kwargs={"pk": self.pk})
+
+    def save(self, *args, **kwargs) -> None:
+        """Автоматическая генерация уникального слага из названия темы."""
+        if not self.slug:
+            transliterated = unidecode(self.title)
+            base_slug = slugify(transliterated)[:200]
+            if not base_slug:
+                base_slug = "topic"
+            candidate = base_slug
+            counter = 1
+            while Topic.objects.filter(slug=candidate).exclude(pk=self.pk).exists():
+                candidate = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = candidate
+        super().save(*args, **kwargs)
+
     def __str__(self) -> str:
         status_text = "Свободна" if (self.is_available and self.has_free_capacity()) else "Занята"
         return f"[{self.id}] {self.title} ({self.discipline.name}) — {status_text}"
 
 
+class ApplicationQuerySet(models.QuerySet):
+    """Кастомный QuerySet для заявок на темы курсовых работ."""
+
+    def active(self):
+        """Возвращает только активные (утвержденные) заявки."""
+        return self.filter(status=Application.Status.ACTIVE)
+
+    def cancelled(self):
+        """Возвращает аннулированные заявки."""
+        return self.filter(status=Application.Status.CANCELLED)
+
+    def completed(self):
+        """Возвращает успешно защищенные/завершенные заявки."""
+        return self.filter(status=Application.Status.COMPLETED)
+
+    def for_date(self, target_date):
+        """Фильтрует заявки по заданной дате подачи."""
+        return self.filter(application_date=target_date)
+
+
+class ApplicationManager(models.Manager.from_queryset(ApplicationQuerySet)):
+    """Менеджер записей заявок с методами фильтрации по статусам."""
+    pass
+
+
 class Application(models.Model):
     """Модель заявки студента на закрепление темы курсовой работы."""
 
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Активна"
+        CANCELLED = "cancelled", "Отменена"
+        COMPLETED = "completed", "Завершена"
+
     topic = models.ForeignKey(
         Topic,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="applications",
         verbose_name="Тема курсовой работы",
     )
     student = models.ForeignKey(
         Student,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="applications",
         verbose_name="Студент-соискатель",
     )
     application_date = models.DateField(
-        auto_now_add=True,
+        default=date.today,
         verbose_name="Дата подачи заявки",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+        verbose_name="Статус заявки",
     )
     priority = models.IntegerField(
         verbose_name="Рейтинговый балл / приоритет",
         default=0,
     )
-    is_cancelled = models.BooleanField(
-        verbose_name="Заявка отменена",
-        default=False,
-    )
+
+    objects = ApplicationManager()
 
     class Meta:
         verbose_name = "Заявка на курсовую работу"
@@ -189,15 +279,19 @@ class Application(models.Model):
         ordering = ["-application_date", "-id"]
 
     @property
-    def status(self) -> str:
-        """Динамическое свойство статуса заявки."""
-        return "ОТМЕНЕНА" if self.is_cancelled else "ОДОБРЕНА"
+    def is_cancelled(self) -> bool:
+        """Обратная совместимость со старым булевым флагом."""
+        return self.status == self.Status.CANCELLED
+
+    @is_cancelled.setter
+    def is_cancelled(self, value: bool) -> None:
+        self.status = self.Status.CANCELLED if value else self.Status.ACTIVE
 
     def cancel(self) -> None:
         """Отменяет заявку и освобождает квоту на тему."""
-        if not self.is_cancelled:
-            self.is_cancelled = True
-            self.save()
+        if self.status != self.Status.CANCELLED:
+            self.status = self.Status.CANCELLED
+            self.save(update_fields=["status"])
             self.topic.release_slot()
 
     def save(self, *args, **kwargs) -> None:
@@ -206,4 +300,7 @@ class Application(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
-        return f"Заявка №{self.id}: {self.student.name} -> [{self.topic.id}] {self.topic.title} ({self.status})"
+        return (
+            f"Заявка №{self.id}: {self.student.name} -> "
+            f"[{self.topic.id}] {self.topic.title} ({self.get_status_display()})"
+        )

@@ -6,10 +6,14 @@ from . import views
 urlpatterns = [
     # Веб-страницы (UI)
     path("", views.index_view, name="index"),
+    path("topic/create/", views.topic_create_view, name="topic_create"),
+    path("topic/<int:pk>/edit/", views.topic_edit_view, name="topic_edit"),
     path("topic/<int:pk>/", views.topic_detail_view, name="topic_detail"),
+    path("topic/slug/<slug:slug>/", views.topic_detail_slug_view, name="topic_detail_slug"),
     path("students/", views.students_list_view, name="students_list"),
     path("applications/", views.applications_list_view, name="applications_list"),
     path("apply/", views.apply_view, name="apply"),
+    path("applications/<int:pk>/edit/", views.application_edit_view, name="application_edit"),
     path("applications/<int:pk>/cancel/", views.cancel_application_view, name="cancel_application"),
     path("statistics/", views.statistics_view, name="statistics"),
 

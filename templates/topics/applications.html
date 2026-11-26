@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Журнал заявок на темы курсовых работ | Сервис курсовых работ{% endblock %}
+{% block title %}Журнал заявок на темы курсовых работ | {{ site_short_name }}{% endblock %}
 
 {% block content %}
 <div class="row align-items-center mb-4">
@@ -15,6 +15,18 @@
             <i class="bi bi-send-fill me-1"></i>Новая заявка
         </a>
     </div>
+</div>
+
+<!-- Фильтрация по статусам -->
+<div class="mb-3 d-flex gap-2">
+    <a href="{% url 'applications_list' %}" class="btn btn-sm {% if not selected_status %}btn-dark{% else %}btn-outline-secondary{% endif %}">
+        Все заявки
+    </a>
+    {% for code, label in statuses %}
+        <a href="{% url 'applications_list' %}?status={{ code }}" class="btn btn-sm {% if selected_status == code %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+            {{ label }}
+        </a>
+    {% endfor %}
 </div>
 
 <div class="card shadow-sm border-0">
@@ -47,7 +59,7 @@
                             <div class="small text-muted">{{ app.student.course }} курс • GPA: {{ app.student.gpa|floatformat:2 }}</div>
                         </td>
                         <td>
-                            <a href="{% url 'topic_detail' app.topic.id %}" class="fw-medium text-decoration-none text-primary">
+                            <a href="{{ app.topic.get_absolute_url }}" class="fw-medium text-decoration-none text-primary">
                                 {{ app.topic.title }}
                             </a>
                             <div class="small text-muted">Рук.: {{ app.topic.supervisor }}</div>
@@ -61,26 +73,31 @@
                             </span>
                         </td>
                         <td>
-                            {% if app.is_cancelled %}
-                                <span class="badge bg-secondary">
+                            {% if app.status == 'active' %}
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i>Активна
+                                </span>
+                            {% elif app.status == 'cancelled' %}
+                                <span class="badge bg-danger">
                                     <i class="bi bi-x-circle me-1"></i>Отменена
                                 </span>
                             {% else %}
-                                <span class="badge bg-success">
-                                    <i class="bi bi-check-circle me-1"></i>Одобрена
+                                <span class="badge bg-primary">
+                                    <i class="bi bi-check2-all me-1"></i>Завершена
                                 </span>
                             {% endif %}
                         </td>
                         <td class="text-end pe-3">
+                            <a href="{% url 'application_edit' app.id %}" class="btn btn-outline-secondary btn-sm me-1" title="Редактировать">
+                                <i class="bi bi-pencil"></i>
+                            </a>
                             {% if not app.is_cancelled %}
                                 <form method="post" action="{% url 'cancel_application' app.id %}" class="d-inline" onsubmit="return confirm('Вы уверены, что хотите аннулировать заявку №{{ app.id }}? Место на тему будет освобождено.');">
                                     {% csrf_token %}
                                     <button type="submit" class="btn btn-outline-danger btn-sm" title="Отозвать заявку">
-                                        <i class="bi bi-trash3 me-1"></i>Отозвать
+                                        <i class="bi bi-trash3"></i>
                                     </button>
                                 </form>
-                            {% else %}
-                                <span class="text-muted small">Архив</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -88,7 +105,7 @@
                     <tr>
                         <td colspan="8" class="text-center py-4 text-muted">
                             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
-                            Заявок пока не подано. Перейдите в <a href="{% url 'apply' %}">форму подачи заявки</a> для регистрации.
+                            Заявок пока не найдено. Перейдите в <a href="{% url 'apply' %}">форму подачи заявки</a> для регистрации.
                         </td>
                     </tr>
                     {% endfor %}
@@ -97,4 +114,35 @@
         </div>
     </div>
 </div>
+
+<!-- Пагинация списка заявок -->
+{% if page_obj.has_other_pages %}
+<nav class="mt-4" aria-label="Навигация по заявкам">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}">&laquo; Назад</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">&laquo; Назад</span></li>
+        {% endif %}
+
+        {% for p in page_obj.paginator.page_range %}
+            {% if p == page_obj.number %}
+                <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ p }}{% if selected_status %}&status={{ selected_status }}{% endif %}">{{ p }}</a></li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if selected_status %}&status={{ selected_status }}{% endif %}">Вперед &raquo;</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">Вперед &raquo;</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}

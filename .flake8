@@ -1,4 +1,4 @@
 [flake8]
-exclude = .venv,venv,__pycache__,.git,generate_docx_reports.py
+exclude = .venv,venv,__pycache__,.git,generate_docx_reports.py,generate_docx_reports_5_6_7.py,generate_docx_reports_9_10_11.py,topics/migrations
 max-line-length = 120
 extend-ignore = E203,W503

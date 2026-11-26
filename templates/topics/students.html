@@ -42,6 +42,9 @@
                             {% if student.name == "Узунян Овсеп Норайрович" %}
                                 <span class="badge bg-primary-subtle text-primary border border-primary-subtle">Автор проекта (ЭФБО-12-24)</span>
                             {% endif %}
+                            {% if student.is_honor_student %}
+                                <span class="badge bg-warning text-dark"><i class="bi bi-star-fill text-dark me-1"></i>Отличник</span>
+                            {% endif %}
                         </td>
                         <td>
                             <span class="badge bg-secondary">{{ student.course }} курс</span>

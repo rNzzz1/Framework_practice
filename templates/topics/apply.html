@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Подача заявки на тему курсовой работы | Сервис курсовых работ{% endblock %}
+{% block title %}Подача заявки на тему курсовой работы | {{ site_short_name }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
@@ -8,73 +8,57 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-primary text-white py-3">
                 <h4 class="mb-0 fw-bold">
-                    <i class="bi bi-send-fill me-2"></i>Подача заявки на тему курсовой работы
+                    <i class="bi bi-send-fill me-2"></i>Подача заявки на тему курсовой работы (ModelForm)
                 </h4>
             </div>
             <div class="card-body p-4">
                 <p class="text-muted mb-4">
-                    Выберите студента-соискателя и желаемую тему курсового проекта. Сервис автоматически проверит выполнение академических требований (курс, GPA) и наличие свободных мест.
+                    Заполните форму заявки. Система Django Forms выполнит автоматическую валидацию академических требований (курс, GPA) и контроль квоты мест.
                 </p>
 
-                <form method="post" action="{% url 'apply' %}" id="applicationForm">
+                <!-- Отображение не-полевых ошибок формы (non_field_errors) -->
+                {% if form.non_field_errors %}
+                    <div class="alert alert-danger shadow-sm">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        {% for error in form.non_field_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{% url 'apply' %}" novalidate>
                     {% csrf_token %}
 
                     <div class="mb-4">
-                        <label for="studentSelect" class="form-label fw-bold">
-                            <i class="bi bi-person me-1 text-primary"></i>Студент-соискатель:
+                        <label for="{{ form.student.id_for_label }}" class="form-label fw-bold">
+                            <i class="bi bi-person me-1 text-primary"></i>{{ form.student.label }}:
                         </label>
-                        <select name="student" id="studentSelect" class="form-select form-select-lg" required>
-                            <option value="">-- Выберите студента из списка кафедры --</option>
-                            {% for student in students %}
-                                <option value="{{ student.id }}"
-                                        data-course="{{ student.course }}"
-                                        data-gpa="{{ student.gpa }}"
-                                        data-priority="{{ student.calculate_priority }}">
-                                    {{ student.name }} ({{ student.course }} курс, GPA: {{ student.gpa|floatformat:2 }}, {% if student.is_budget %}Бюджет{% else %}Договор{% endif %})
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <div id="studentInfo" class="form-text mt-2 text-primary" style="display: none;"></div>
+                        {{ form.student }}
+                        {% if form.student.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.student.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
 
                     <div class="mb-4">
-                        <label for="topicSelect" class="form-label fw-bold">
-                            <i class="bi bi-journal-bookmark me-1 text-primary"></i>Тема курсовой работы:
+                        <label for="{{ form.topic.id_for_label }}" class="form-label fw-bold">
+                            <i class="bi bi-journal-bookmark me-1 text-primary"></i>{{ form.topic.label }}:
                         </label>
-                        <select name="topic" id="topicSelect" class="form-select form-select-lg" required>
-                            <option value="">-- Выберите доступную тему курсовой работы --</option>
-                            {% for topic in topics %}
-                                <option value="{{ topic.id }}"
-                                        data-min-course="{{ topic.min_course }}"
-                                        data-min-gpa="{{ topic.min_gpa }}"
-                                        data-capacity="{{ topic.capacity }}"
-                                        data-current="{{ topic.current_students }}"
-                                        data-discipline="{{ topic.discipline.name }}"
-                                        data-supervisor="{{ topic.supervisor }}"
-                                        {% if selected_topic_id == topic.id %}selected{% endif %}>
-                                    [{{ topic.discipline.name }}] {{ topic.title }} (Рук.: {{ topic.supervisor }})
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <div id="topicInfo" class="form-text mt-2 text-primary" style="display: none;"></div>
-                    </div>
-
-                    <!-- Карточка динамической валидации (ПР6: интеграция frontend и backend) -->
-                    <div id="validationCard" class="card bg-light border-0 p-3 mb-4" style="display: none;">
-                        <h6 class="fw-bold mb-2"><i class="bi bi-clipboard-check me-2"></i>Проверка требований допуска:</h6>
-                        <ul class="list-unstyled mb-0 small">
-                            <li id="checkCourse" class="mb-1"></li>
-                            <li id="checkGpa" class="mb-1"></li>
-                            <li id="checkQuota"></li>
-                        </ul>
+                        {{ form.topic }}
+                        {% if form.topic.errors %}
+                            <div class="text-danger small mt-1">
+                                {% for error in form.topic.errors %}{{ error }}{% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center pt-3 border-top">
                         <a href="{% url 'index' %}" class="btn btn-outline-secondary">
                             <i class="bi bi-arrow-left me-1"></i>Вернуться в каталог
                         </a>
-                        <button type="submit" id="submitBtn" class="btn btn-primary px-4 py-2 fw-semibold">
-                            <i class="bi bi-check2-circle me-1"></i>Подтвердить и отправить заявку
+                        <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold">
+                            <i class="bi bi-check2-circle me-1"></i>Подтвердить и сохранить заявку
                         </button>
                     </div>
                 </form>
@@ -82,76 +66,11 @@
         </div>
 
         <div class="alert alert-info border-0 shadow-sm">
-            <h6 class="fw-bold mb-1"><i class="bi bi-lightbulb me-1"></i>Правила автоматического распределения:</h6>
+            <h6 class="fw-bold mb-1"><i class="bi bi-lightbulb me-1"></i>Правила автоматической валидации Django Forms:</h6>
             <p class="small mb-0">
-                Заявка утверждается мгновенно при соблюдении пороговых критериев темы. В случае превышения спроса приоритет определяется рейтинговой формулой кафедры: <code>Рейтинг = GPA × 20 + (10 баллов для бюджета)</code>.
+                Валидация выполняется в методе <code>clean()</code> класса <code>ApplicationForm</code>: проверяется отсутствие повторных активных заявок, соответствие курса и GPA студента требованиям темы, а также наличие свободных мест.
             </p>
         </div>
     </div>
 </div>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    const studentSelect = document.getElementById("studentSelect");
-    const topicSelect = document.getElementById("topicSelect");
-    const valCard = document.getElementById("validationCard");
-    const checkCourse = document.getElementById("checkCourse");
-    const checkGpa = document.getElementById("checkGpa");
-    const checkQuota = document.getElementById("checkQuota");
-    const submitBtn = document.getElementById("submitBtn");
-
-    function validateSelection() {
-        const studentOpt = studentSelect.options[studentSelect.selectedIndex];
-        const topicOpt = topicSelect.options[topicSelect.selectedIndex];
-
-        if (!studentOpt.value || !topicOpt.value) {
-            valCard.style.display = "none";
-            submitBtn.disabled = false;
-            return;
-        }
-
-        const studentCourse = parseInt(studentOpt.dataset.course);
-        const studentGpa = parseFloat(studentOpt.dataset.gpa);
-        const priority = studentOpt.dataset.priority;
-
-        const minCourse = parseInt(topicOpt.dataset.minCourse);
-        const minGpa = parseFloat(topicOpt.dataset.minGpa);
-        const capacity = parseInt(topicOpt.dataset.capacity);
-        const current = parseInt(topicOpt.dataset.current);
-
-        valCard.style.display = "block";
-
-        const courseOk = studentCourse >= minCourse;
-        const gpaOk = studentGpa >= minGpa;
-        const quotaOk = current < capacity;
-
-        checkCourse.innerHTML = courseOk
-            ? `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Курс соискателя (${studentCourse}) удовлетворяет требованию (≥ ${minCourse})</span>`
-            : `<span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Курс соискателя (${studentCourse}) ниже требуемого (≥ ${minCourse})</span>`;
-
-        checkGpa.innerHTML = gpaOk
-            ? `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Средний балл GPA (${studentGpa.toFixed(2)}) удовлетворяет требованию (≥ ${minGpa.toFixed(2)})</span>`
-            : `<span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Средний балл GPA (${studentGpa.toFixed(2)}) ниже порогового (≥ ${minGpa.toFixed(2)})</span>`;
-
-        checkQuota.innerHTML = quotaOk
-            ? `<span class="text-success"><i class="bi bi-check-circle-fill me-1"></i>Свободные квоты доступны (${current} / ${capacity} занято)</span>`
-            : `<span class="text-danger"><i class="bi bi-x-circle-fill me-1"></i>Квота мест полностью исчерпана (${current} / ${capacity})</span>`;
-
-        if (courseOk && gpaOk && quotaOk) {
-            submitBtn.disabled = false;
-            submitBtn.className = "btn btn-primary px-4 py-2 fw-semibold";
-        } else {
-            submitBtn.disabled = true;
-            submitBtn.className = "btn btn-secondary px-4 py-2 fw-semibold";
-        }
-    }
-
-    studentSelect.addEventListener("change", validateSelection);
-    topicSelect.addEventListener("change", validateSelection);
-
-    if (topicSelect.value) {
-        validateSelection();
-    }
-});
-</script>
 {% endblock %}

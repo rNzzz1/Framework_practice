@@ -1,25 +1,36 @@
 {% extends "base.html" %}
 
-{% block title %}Тема курсовой: {{ topic.title }} | Сервис распределения{% endblock %}
+{% block title %}Тема: {{ topic.title }} | {{ site_short_name }}{% endblock %}
 
 {% block content %}
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{% url 'index' %}">Каталог тем</a></li>
-        <li class="breadcrumb-item active" aria-current="page">Тема №{{ topic.id }}</li>
+        <li class="breadcrumb-item active" aria-current="page">{{ topic.slug|default:topic.id }}</li>
     </ol>
 </nav>
 
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="card p-4 shadow-sm border-0 mb-4">
+            {% if topic.image %}
+                <div class="mb-3 text-center">
+                    <img src="{{ topic.image.url }}" class="img-fluid rounded shadow-sm" alt="{{ topic.title }}" style="max-height: 300px; object-fit: cover; width: 100%;">
+                </div>
+            {% endif %}
+
             <div class="d-flex justify-content-between align-items-start mb-3">
                 <span class="badge bg-primary fs-6">ID: {{ topic.id }}</span>
-                {% if topic.is_available and topic.has_free_capacity %}
-                    <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Свободна для выбора</span>
-                {% else %}
-                    <span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Квота исчерпана</span>
-                {% endif %}
+                <div>
+                    {% if topic.is_competitive %}
+                        <span class="badge bg-warning text-dark fs-6 me-1"><i class="bi bi-stars"></i> Командная тема</span>
+                    {% endif %}
+                    {% if topic.is_available and topic.has_free_capacity %}
+                        <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>Свободна для выбора</span>
+                    {% else %}
+                        <span class="badge bg-danger fs-6"><i class="bi bi-x-circle me-1"></i>Квота исчерпана</span>
+                    {% endif %}
+                </div>
             </div>
             <h3 class="fw-bold text-dark mb-3">{{ topic.title }}</h3>
             
@@ -39,6 +50,10 @@
                             <td>{{ topic.discipline.department }}</td>
                         </tr>
                         <tr>
+                            <th class="bg-light">Канонический слаг (URL)</th>
+                            <td><code>{{ topic.slug }}</code></td>
+                        </tr>
+                        <tr>
                             <th class="bg-light">Минимальный курс допуска</th>
                             <td>{{ topic.min_course }} курс</td>
                         </tr>
@@ -54,7 +69,7 @@
                 </table>
             </div>
 
-            <div class="mt-4 d-flex gap-2">
+            <div class="mt-4 d-flex gap-2 flex-wrap">
                 {% if topic.is_available and topic.has_free_capacity %}
                     <a href="{% url 'apply' %}?topic_id={{ topic.id }}" class="btn btn-primary px-4">
                         <i class="bi bi-send-fill me-1"></i>Подать заявку на эту тему
@@ -62,6 +77,9 @@
                 {% else %}
                     <button class="btn btn-secondary px-4" disabled>Набор на тему закрыт</button>
                 {% endif %}
+                <a href="{% url 'topic_edit' topic.id %}" class="btn btn-outline-info">
+                    <i class="bi bi-pencil-square me-1"></i>Редактировать тему
+                </a>
                 <a href="{% url 'index' %}" class="btn btn-outline-secondary">Вернуться в каталог</a>
             </div>
         </div>

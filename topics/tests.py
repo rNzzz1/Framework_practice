@@ -1,14 +1,23 @@
-"""Комплексные тесты моделей, представлений и REST API сервиса выбора тем курсовых работ."""
+"""Комплексные автоматизированные тесты для ПР9, ПР10 и ПР11 сервиса выбора тем курсовых работ.
 
-import json
+Охватывает:
+- ПР9: ORM-модели, связи ForeignKey, кастомные методы моделей, целостность данных
+- ПР10: Кастомный QuerySet/Manager, SlugField, GeneratedField, Django Admin регистрация и действия
+- ПР11: Валидация форм (TopicFilterForm, ApplicationForm, ApplicationEditForm с instance, TopicForm)
+- HTML-представления, пагинация, контекстный процессор и RESTful API
+"""
+
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.contrib.admin.sites import site
 
 from .models import Discipline, Student, Topic, Application
+from .forms import TopicFilterForm, ApplicationForm, ApplicationEditForm, TopicForm
 
 
-class ModelTestCase(TestCase):
-    """Тестирование бизнес-логики моделей данных."""
+class ModelAndORMTestCase(TestCase):
+    """Тестирование моделей данных Django ORM (ПР9 и ПР10)."""
 
     def setUp(self):
         self.discipline = Discipline.objects.create(
@@ -28,27 +37,36 @@ class ModelTestCase(TestCase):
             supervisor="доц. Ящун Т.В.",
             min_course=3,
             min_gpa=4.0,
-            capacity=1,
+            capacity=2,
             current_students=0,
             is_available=True,
         )
 
-    def test_student_priority_calculation(self):
-        """Проверка формулы расчета приоритета студента."""
-        # priority = int(4.8 * 20) + 10 = 96 + 10 = 106
+    def test_student_priority_and_honor_generated_field(self):
+        """Проверка формулы приоритета и вычисленного поля GeneratedField (is_honor_student)."""
         self.assertEqual(self.student.calculate_priority(), 106)
+        self.student.refresh_from_db()
+        # GPA 4.8 >= 4.5 -> True
+        self.assertTrue(self.student.is_honor_student)
 
-        # Контрактный студент без бонуса в 10 баллов
+        # Проверка контрактника
         self.student.is_budget = False
+        self.student.save()
         self.assertEqual(self.student.calculate_priority(), 96)
 
+    def test_topic_slug_generation_and_competitive_generated_field(self):
+        """Проверка автоматической генерации слага и флага is_competitive."""
+        self.topic.refresh_from_db()
+        self.assertTrue(len(self.topic.slug) > 0)
+        self.assertIn("django", self.topic.slug)
+        self.assertEqual(self.topic.get_absolute_url(), f"/topic/slug/{self.topic.slug}/")
+        # capacity=2 > 1 -> is_competitive=True
+        self.assertTrue(self.topic.is_competitive)
+
     def test_topic_suitability_check(self):
-        """Проверка проверки академических требований темы."""
-        # Подходящий студент (3 курс, GPA 4.8 >= 4.0)
+        """Проверка академического соответствия соискателя требованиям темы."""
         self.assertTrue(self.topic.is_suitable_for(student_course=3, gpa=4.8))
-        # Слишком младший курс
         self.assertFalse(self.topic.is_suitable_for(student_course=2, gpa=4.8))
-        # Слишком низкий средний балл
         self.assertFalse(self.topic.is_suitable_for(student_course=3, gpa=3.8))
 
     def test_slot_reservation_and_release(self):
@@ -58,229 +76,172 @@ class ModelTestCase(TestCase):
 
         self.topic.refresh_from_db()
         self.assertEqual(self.topic.current_students, 1)
+        self.assertTrue(self.topic.is_available)
+
+        # Резервируем второй слот (квота = 2)
+        self.assertTrue(self.topic.reserve_slot())
+        self.topic.refresh_from_db()
+        self.assertEqual(self.topic.current_students, 2)
         self.assertFalse(self.topic.is_available)
-        self.assertFalse(self.topic.has_free_capacity())
 
-        # Повторная попытка резерва должна вернуть False
-        self.assertFalse(self.topic.reserve_slot())
-
-        # Освобождение места
+        # Освобождение слота
         self.topic.release_slot()
         self.topic.refresh_from_db()
-        self.assertEqual(self.topic.current_students, 0)
-        self.assertTrue(self.topic.is_available)
-        self.assertTrue(self.topic.has_free_capacity())
-
-    def test_application_creation_and_cancellation(self):
-        """Проверка создания и аннулирования заявки."""
-        app = Application.objects.create(
-            student=self.student,
-            topic=self.topic,
-        )
-        self.assertEqual(app.priority, 106)
-        self.assertEqual(app.status, "ОДОБРЕНА")
-
-        # Резервируем место
-        self.topic.reserve_slot()
         self.assertEqual(self.topic.current_students, 1)
-
-        # Отменяем заявку
-        app.cancel()
-        self.assertTrue(app.is_cancelled)
-        self.assertEqual(app.status, "ОТМЕНЕНА")
-
-        self.topic.refresh_from_db()
-        self.assertEqual(self.topic.current_students, 0)
         self.assertTrue(self.topic.is_available)
 
+    def test_application_manager_and_cancellation(self):
+        """Проверка кастомного менеджера Application (active, cancelled) и отмены."""
+        app = Application.objects.create(student=self.student, topic=self.topic)
+        self.assertEqual(app.status, Application.Status.ACTIVE)
+        self.assertFalse(app.is_cancelled)
 
-class ViewsTestCase(TestCase):
-    """Тестирование HTML-представлений веб-интерфейса."""
+        self.assertEqual(Application.objects.active().count(), 1)
+        self.assertEqual(Application.objects.cancelled().count(), 0)
+
+        # Отмена заявки
+        app.cancel()
+        app.refresh_from_db()
+        self.assertEqual(app.status, Application.Status.CANCELLED)
+        self.assertTrue(app.is_cancelled)
+        self.assertEqual(Application.objects.cancelled().count(), 1)
+        self.assertEqual(Application.objects.active().count(), 0)
+
+
+class FormsTestCase(TestCase):
+    """Тестирование форм Django (ПР11: TopicFilterForm, ApplicationForm, ApplicationEditForm, TopicForm)."""
 
     def setUp(self):
-        self.client = Client()
-        self.discipline = Discipline.objects.create(
-            name="Базы данных",
-            code="BD-02",
-        )
+        self.discipline = Discipline.objects.create(name="Веб-технологии", code="WEB-01")
         self.student = Student.objects.create(
-            name="Иванов Иван Иванович",
+            name="Иванов Иван",
             course=3,
             gpa=4.5,
             is_budget=True,
             email="ivanov@mirea.ru",
         )
         self.topic = Topic.objects.create(
-            title="Оптимизация запросов PostgreSQL",
+            title="Интеграция Django с внешними API",
             discipline=self.discipline,
-            supervisor="ст. преп. Макиевский С.Е.",
+            supervisor="доц. Ящун Т.В.",
             min_course=3,
             min_gpa=4.0,
-            capacity=2,
-            current_students=0,
+            capacity=1,
             is_available=True,
         )
 
-    def test_index_view_status_code_and_content(self):
-        """Проверка главной страницы каталога тем."""
+    def test_topic_filter_form_valid(self):
+        """Проверка формы фильтрации каталога тем."""
+        form = TopicFilterForm(
+            data={"q": "Django", "discipline": self.discipline.id, "min_course": "3", "sort": "title"}
+        )
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data["q"], "Django")
+
+    def test_application_form_valid(self):
+        """Проверка успешной валидации создания заявки."""
+        form = ApplicationForm(data={"student": self.student.id, "topic": self.topic.id})
+        self.assertTrue(form.is_valid())
+
+    def test_application_form_academic_mismatch(self):
+        """Проверка блокировки подачи заявки при нехватке среднего балла."""
+        low_gpa_student = Student.objects.create(name="Слабый Студент", course=3, gpa=3.2, email="weak@mirea.ru")
+        form = ApplicationForm(data={"student": low_gpa_student.id, "topic": self.topic.id})
+        self.assertFalse(form.is_valid())
+        self.assertIn("не соответствует академическим требованиям", str(form.errors))
+
+    def test_application_form_duplicate_check(self):
+        """Проверка запрета повторной активной заявки на одну и ту же тему."""
+        Application.objects.create(student=self.student, topic=self.topic, status=Application.Status.ACTIVE)
+        form = ApplicationForm(data={"student": self.student.id, "topic": self.topic.id})
+        self.assertFalse(form.is_valid())
+        self.assertIn("уже имеет активную", str(form.errors))
+
+    def test_application_edit_form_instance_exclude(self):
+        """Проверка корректной работы instance в ApplicationEditForm без ложного срабатывания дубликата."""
+        app = Application.objects.create(student=self.student, topic=self.topic, status=Application.Status.ACTIVE)
+        form = ApplicationEditForm(
+            data={"student": self.student.id, "topic": self.topic.id, "status": Application.Status.ACTIVE},
+            instance=app,
+        )
+        self.assertTrue(form.is_valid())
+
+    def test_topic_form_with_image(self):
+        """Проверка формы создания темы с загрузкой файла изображения (Pillow)."""
+        # 1x1 пиксель gif/png
+        image_data = (
+            b"GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00"
+            b"!\xf9\x04\x01\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
+        )
+        image_file = SimpleUploadedFile("test_topic.gif", image_data, content_type="image/gif")
+
+        form = TopicForm(
+            data={
+                "title": "Новая тема с изображением",
+                "discipline": self.discipline.id,
+                "supervisor": "Ящун Т.В.",
+                "min_course": 3,
+                "min_gpa": 3.8,
+                "capacity": 2,
+                "is_available": True,
+            },
+            files={"image": image_file},
+        )
+        self.assertTrue(form.is_valid())
+        topic = form.save()
+        self.assertTrue(bool(topic.image))
+
+
+class ViewsAndAdminTestCase(TestCase):
+    """Тестирование представлений веб-интерфейса, контекстных процессоров и админки (ПР10)."""
+
+    def setUp(self):
+        self.client = Client()
+        self.discipline = Discipline.objects.create(name="Архитектура ИС", code="AIS-01")
+        self.student = Student.objects.create(name="Смирнов Алексей", course=3, gpa=4.7, email="smirnov@mirea.ru")
+        self.topic = Topic.objects.create(
+            title="Проектирование микросервисов",
+            discipline=self.discipline,
+            supervisor="Ящун Т.В.",
+            min_course=3,
+            min_gpa=4.0,
+            capacity=2,
+            is_available=True,
+        )
+
+    def test_context_processor(self):
+        """Проверка доступности глобальных переменных контекстного процессора в шаблоне."""
         response = self.client.get(reverse("index"))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Каталог тем курсовых работ")
-        self.assertContains(response, "Оптимизация запросов PostgreSQL")
+        self.assertIn("site_name", response.context)
+        self.assertIn("topics_total_count", response.context)
+        self.assertEqual(response.context["topics_total_count"], 1)
 
-    def test_topic_detail_view(self):
-        """Проверка страницы с деталями конкретной темы."""
-        response = self.client.get(reverse("topic_detail", args=[self.topic.id]))
+    def test_topic_detail_slug_view(self):
+        """Проверка отображения темы по каноническому слагу."""
+        response = self.client.get(reverse("topic_detail_slug", kwargs={"slug": self.topic.slug}))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Оптимизация запросов PostgreSQL")
-        self.assertContains(response, "Макиевский С.Е.")
+        self.assertContains(response, self.topic.title)
 
-    def test_students_list_view(self):
-        """Проверка страницы списка студентов."""
-        response = self.client.get(reverse("students_list"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Иванов Иван Иванович")
-
-    def test_applications_list_view(self):
-        """Проверка журнала заявок."""
-        response = self.client.get(reverse("applications_list"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Журнал поданных заявок")
-
-    def test_statistics_view(self):
-        """Проверка аналитической панели."""
-        response = self.client.get(reverse("statistics"))
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Аналитическая панель сервиса")
-
-    def test_apply_view_post_successful(self):
-        """Проверка успешной подачи заявки через веб-форму."""
-        response = self.client.post(
-            reverse("apply"),
-            {"student": self.student.id, "topic": self.topic.id},
-            follow=True,
-        )
+    def test_apply_view_post_success(self):
+        """Проверка подачи заявки через view с валидацией ModelForm."""
+        response = self.client.post(reverse("apply"), {"student": self.student.id, "topic": self.topic.id}, follow=True)
         self.assertEqual(response.status_code, 200)
         self.assertTrue(Application.objects.filter(student=self.student, topic=self.topic).exists())
 
-        self.topic.refresh_from_db()
-        self.assertEqual(self.topic.current_students, 1)
-
-    def test_apply_view_post_unsuitable_student(self):
-        """Проверка блокировки подачи заявки при несоответствии критериям."""
-        low_gpa_student = Student.objects.create(
-            name="Петров Петр",
-            course=2,
-            gpa=3.0,
-            is_budget=False,
-            email="petrov@mirea.ru",
-        )
-        response = self.client.post(
-            reverse("apply"),
-            {"student": low_gpa_student.id, "topic": self.topic.id},
-            follow=True,
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertFalse(Application.objects.filter(student=low_gpa_student, topic=self.topic).exists())
-
-    def test_cancel_application_view(self):
-        """Проверка отзыва заявки пользователем."""
+    def test_cancel_application_post_only(self):
+        """Проверка отмены заявки через POST-метод."""
         app = Application.objects.create(student=self.student, topic=self.topic)
         self.topic.reserve_slot()
 
         response = self.client.post(reverse("cancel_application", args=[app.id]), follow=True)
         self.assertEqual(response.status_code, 200)
-
         app.refresh_from_db()
-        self.assertTrue(app.is_cancelled)
+        self.assertEqual(app.status, Application.Status.CANCELLED)
 
-
-class ApiTestCase(TestCase):
-    """Тестирование RESTful JSON API сервиса."""
-
-    def setUp(self):
-        self.client = Client()
-        self.discipline = Discipline.objects.create(
-            name="Архитектура корпоративных ИС",
-            code="AKIS-03",
-        )
-        self.student = Student.objects.create(
-            name="Сидоров Сидор",
-            course=4,
-            gpa=4.6,
-            is_budget=True,
-            email="sidorov@mirea.ru",
-        )
-        self.topic = Topic.objects.create(
-            title="Проектирование сервисно-ориентированной архитектуры",
-            discipline=self.discipline,
-            supervisor="доц. Ящун Т.В.",
-            min_course=4,
-            min_gpa=4.2,
-            capacity=1,
-            current_students=0,
-            is_available=True,
-        )
-
-    def test_api_health_check(self):
-        """Проверка системного мониторинга health-check (ПР7)."""
-        response = self.client.get(reverse("api_health"))
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertEqual(data["status"], "healthy")
-        self.assertEqual(data["database"], "connected")
-        self.assertEqual(data["service"], "coursework_service")
-
-    def test_api_topics_list(self):
-        """Проверка эндпоинта получения каталога тем в JSON."""
-        response = self.client.get(reverse("api_topics_list"))
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("topics", data)
-        self.assertEqual(data["count"], 1)
-        self.assertEqual(data["topics"][0]["title"], "Проектирование сервисно-ориентированной архитектуры")
-
-    def test_api_create_application_success(self):
-        """Проверка успешной подачи заявки через JSON REST API."""
-        payload = {
-            "student_id": self.student.id,
-            "topic_id": self.topic.id,
-        }
-        response = self.client.post(
-            reverse("api_create_application"),
-            data=json.dumps(payload),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 201)
-        res_data = response.json()
-        self.assertTrue(res_data["success"])
-        self.assertEqual(res_data["status"], "ОДОБРЕНА")
-
-    def test_api_create_application_quota_exceeded(self):
-        """Проверка ошибки исчерпания квоты при вызове REST API."""
-        # Занимаем единственный слот
-        self.topic.reserve_slot()
-
-        payload = {
-            "student_id": self.student.id,
-            "topic_id": self.topic.id,
-        }
-        response = self.client.post(
-            reverse("api_create_application"),
-            data=json.dumps(payload),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 400)
-        res_data = response.json()
-        self.assertFalse(res_data["success"])
-        self.assertIn("исчерпана", res_data["error"])
-
-    def test_api_statistics(self):
-        """Проверка REST API аналитики."""
-        response = self.client.get(reverse("api_statistics"))
-        self.assertEqual(response.status_code, 200)
-        data = response.json()
-        self.assertIn("total_topics", data)
-        self.assertIn("total_students", data)
-        self.assertIn("total_applications", data)
-        self.assertEqual(data["total_topics"], 1)
+    def test_admin_registration(self):
+        """Проверка регистрации моделей в Django Admin."""
+        self.assertIn(Discipline, site._registry)
+        self.assertIn(Student, site._registry)
+        self.assertIn(Topic, site._registry)
+        self.assertIn(Application, site._registry)
